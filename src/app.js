@@ -1,9 +1,12 @@
 const express = require('express');
+const sequelize = require('./config/database');
 
+const userRouter = require('./user/UserRouter');
 const app = express();
 
-app.post('/api/1.0/users', (req, res) => {
-  return res.send({ message: 'user created' });
-});
+sequelize.sync();
+app.use(express.json());
+
+app.use(userRouter);
 
 module.exports = app;

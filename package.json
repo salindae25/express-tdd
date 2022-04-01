@@ -11,6 +11,7 @@
   "author": "salinda ekanayake",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^5.0.1",
     "express": "^4.17.3",
     "sequelize": "^6.17.0",
     "sqlite3": "^5.0.2"

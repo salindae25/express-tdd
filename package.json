@@ -2,16 +2,18 @@
   "name": "express-ws",
   "version": "1.0.0",
   "description": "express app developed using tdd",
-  "main": "app.js",
+  "main": "server.js",
   "scripts": {
-    "start": "nodemon app",
+    "start": "nodemon .",
     "test": "jest --watch",
     "lint": "eslint ."
   },
   "author": "salinda ekanayake",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.17.3"
+    "express": "^4.17.3",
+    "sequelize": "^6.17.0",
+    "sqlite3": "^5.0.2"
   },
   "devDependencies": {
     "eslint": "^8.12.0",

@@ -1,0 +1,10 @@
+{
+  "database": {
+    "name": "hoaxify",
+    "username": "my-db-user",
+    "password": "db-ps4",
+    "dialect": "sqlite",
+    "server": "./temp/database.dev.sqlite",
+    "logging": false
+  }
+}

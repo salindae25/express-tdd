@@ -4,33 +4,31 @@ const User = require('./User');
 const userSignupScheme = [
   body('username')
     .notEmpty()
-    .withMessage('Username cannot be null')
+    .withMessage('username_null')
     .bail()
     .isLength({ min: 4, max: 32 })
-    .withMessage('Must have min 4 and max 32 characters'),
+    .withMessage('username_length'),
   body('email')
     .notEmpty()
-    .withMessage('E-mail cannot be null')
+    .withMessage('email_null')
     .bail()
     .isEmail()
-    .withMessage('E-mail is not valid')
+    .withMessage('email_not_valid')
     .bail()
     .custom(async (email) => {
       const user = await User.findOne({ where: { email: email } });
-      if (user) throw new Error('E-mail in use');
+      if (user) throw new Error('email_inuse');
     }),
   ,
   body('password')
     .notEmpty()
-    .withMessage('Password cannot be null')
+    .withMessage('password_null')
     .bail()
     .isLength({ min: 6 })
-    .withMessage('Password must be 6 characters long')
+    .withMessage('password_length')
     .bail()
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).*$/)
-    .withMessage(
-      'Password must have at least 1 uppercase, 1 lowercase letter and 1 number'
-    ),
+    .withMessage('passwor_valid'),
 ];
 
 const validate = (schemas) => {
@@ -44,7 +42,7 @@ const validate = (schemas) => {
 
     const validationErrors = {};
     result.array().forEach((err) => {
-      validationErrors[err.param] = err.msg;
+      validationErrors[err.param] = req.t(err.msg);
     });
     return res.status(400).send({ validationErrors });
   };

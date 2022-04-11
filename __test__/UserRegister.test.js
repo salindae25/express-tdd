@@ -101,13 +101,17 @@ describe('User Registration', () => {
     expect(Object.keys(response.body.validationErrors)).toEqual(expect.arrayContaining(['username', 'email']));
   });
 
+  it('returns Validation Error as message in response body when validation error occurs', async () => {
+    const response = await postUserSignup({ ...validUser, username: null });
+    expect(response.body.message).toBe('Validation Error');
+  });
   const username_null = 'Username cannot be null';
   const username_length = 'Must have min 4 and max 32 characters';
   const email_null = 'E-mail cannot be null';
   const email_not_valid = 'E-mail is not valid';
   const password_null = 'Password cannot be null';
   const password_length = 'Password must be 6 characters long';
-  const passwor_valid = 'Password must have at least 1 uppercase, 1 lowercase letter and 1 number';
+  const password_valid = 'Password must have at least 1 uppercase, 1 lowercase letter and 1 number';
   const email_inuse = 'E-mail in use';
   it.each([
     { field: 'username', expected: username_null, value: null },
@@ -119,8 +123,8 @@ describe('User Registration', () => {
     { field: 'email', expected: email_not_valid, value: 'user.mail@com' },
     { field: 'password', expected: password_null, value: null },
     { field: 'password', expected: password_length, value: 'ps4' },
-    { field: 'password', expected: passwor_valid, value: 'allowCase' },
-    { field: 'password', expected: passwor_valid, value: 'allowCa@se' },
+    { field: 'password', expected: password_valid, value: 'allowCase' },
+    { field: 'password', expected: password_valid, value: 'allowCa@se' },
   ])('returns $expected when $field is $value', async ({ field, value, expected }) => {
     const user = { ...validUser };
     user[field] = value;
@@ -140,7 +144,7 @@ describe('User Registration', () => {
     expect(user.inactive).toBe(true);
   });
 
-  it('create user in inactive mode even when request body containe inactive as false', async () => {
+  it('create user in inactive mode even when request body contains inactive as false', async () => {
     await postUserSignup({ ...validUser, inactive: false });
     const user = await User.findOne();
     expect(user.inactive).toBe(true);
@@ -152,7 +156,7 @@ describe('User Registration', () => {
     expect(user.activationToken).toBeTruthy();
   });
 
-  it('recive a email containing activationToken', async () => {
+  it('receive a email containing activationToken', async () => {
     await postUserSignup();
     const user = await User.findOne();
     expect(lastMail).toContain(validUser.email);
@@ -178,7 +182,7 @@ describe('User Registration', () => {
     expect(users.length).toBe(0);
   });
 
-  describe('Intenationalization-en1', () => {
+  describe('Internationalization-en1', () => {
     const user_created = 'User created1';
     const username_null = 'Username cannot be null1';
     const username_length = 'Must have min 4 and max 32 characters1';
@@ -189,6 +193,7 @@ describe('User Registration', () => {
     const passwor_valid = 'Password must have at least 1 uppercase, 1 lowercase letter and 1 number1';
     const email_inuse = 'E-mail in use1';
     const email_failure = 'E-mail failure1';
+    const validation_error = 'Validation Error1';
     it('returns a success message when signup request is valid', async () => {
       const response = await postUserSignup(validUser, { translate: 'tr' });
       expect(response.body.message).toBe(user_created);
@@ -212,7 +217,10 @@ describe('User Registration', () => {
       const response = await postUserSignup(user, { translate: 'tr' });
       expect(response.body.validationErrors[field]).toBe(expected);
     });
-
+    it(`returns ${validation_error} as message in response body when validation error occurs`, async () => {
+      const response = await postUserSignup({ ...validUser, username: null }, { translate: 'tr' });
+      expect(response.body.message).toBe(validation_error);
+    });
     it(`returns ${email_inuse} when same email is already in use`, async () => {
       await User.create({ ...validUser });
       const response = await postUserSignup(validUser, { translate: 'tr' });
@@ -288,4 +296,42 @@ describe('User Activation', () => {
       expect(response.body.message).toBe(message);
     }
   );
+});
+
+describe('Error Model', () => {
+  it('returns path, timestamp, ValidationError in the response body when validation error occurs', async () => {
+    const response = await postUserSignup({ ...validUser, username: null });
+    const body = response.body;
+    expect(Object.keys(body)).toEqual(expect.arrayContaining(['path', 'timestamp', 'message', 'validationErrors']));
+  });
+  it('returns path, timestamp and message in the response body when the error is not a validation error', async () => {
+    await postUserSignup();
+    const token = 'this-token-does-not-exist';
+    const response = await request(app)
+      .post('/api/1.0/users/token/' + token)
+      .send();
+
+    expect(Object.keys(response.body)).toEqual(expect.arrayContaining(['path', 'timestamp', 'message']));
+  });
+
+  it('returns request path in the response body ', async () => {
+    await postUserSignup();
+    const token = 'this-token-does-not-exist';
+    const response = await request(app)
+      .post('/api/1.0/users/token/' + token)
+      .send();
+
+    expect(response.body.path).toBe('/api/1.0/users/token/' + token);
+  });
+  it('returns timestamp in milliseconds within 5 seconds in the response body ', async () => {
+    await postUserSignup();
+    const token = 'this-token-does-not-exist';
+    const currentTimestamp = new Date().getTime();
+    const fiveSecondTime = currentTimestamp + 5000;
+    const response = await request(app)
+      .post('/api/1.0/users/token/' + token)
+      .send();
+    expect(response.body.timestamp).toBeGreaterThan(currentTimestamp);
+    expect(response.body.timestamp).toBeLessThan(fiveSecondTime);
+  });
 });

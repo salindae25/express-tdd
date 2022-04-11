@@ -1,4 +1,5 @@
 const { body, validationResult } = require('express-validator');
+const ValidationException = require('../error/ValidationException');
 const User = require('./User');
 
 const userSignupScheme = [
@@ -44,7 +45,7 @@ const validate = (schemas) => {
     result.array().forEach((err) => {
       validationErrors[err.param] = req.t(err.msg);
     });
-    return res.status(400).send({ validationErrors });
+    next(new ValidationException(validationErrors));
   };
 };
 

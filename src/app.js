@@ -3,6 +3,7 @@ const i18next = require('i18next');
 const i18next_fs = require('i18next-fs-backend');
 const i18next_middleware = require('i18next-http-middleware');
 const sequelize = require('./config/database');
+const ErrorHandler = require('./error/ErrorHandler');
 const userRouter = require('./user/UserRouter');
 
 i18next
@@ -27,5 +28,7 @@ sequelize.sync();
 app.use(express.json());
 
 app.use(userRouter);
+
+app.use(ErrorHandler);
 
 module.exports = app;

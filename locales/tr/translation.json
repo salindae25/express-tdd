@@ -11,5 +11,9 @@
   "email_failure": "E-mail failure1",
   "activation_token_invalid": "This account is either active or token is invalid1",
   "activation_success": "This account is activated1",
-  "validation_error": "Validation Error1"
+  "validation_error": "Validation Error1",
+  "user_not_found": "User not found1",
+  "incorrect_credential": "Incorrect credentials1",
+  "inactive_authentication_failure": "Account is inactive1",
+  "unauthorized_user_update": "Unauthorized user update1"
 }

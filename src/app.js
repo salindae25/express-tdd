@@ -5,6 +5,7 @@ const i18next_middleware = require('i18next-http-middleware');
 const sequelize = require('./config/database');
 const ErrorHandler = require('./error/ErrorHandler');
 const userRouter = require('./user/UserRouter');
+const authRouter = require('./auth/AuthenticationRouter');
 
 i18next
   .use(i18next_fs)
@@ -28,6 +29,8 @@ sequelize.sync();
 app.use(express.json());
 
 app.use(userRouter);
+
+app.use(authRouter);
 
 app.use(ErrorHandler);
 

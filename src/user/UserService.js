@@ -2,14 +2,12 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const User = require('./User');
 const EmailService = require('../email/EmailService');
+const Sequelize = require('sequelize');
 const sequelize = require('../config/database');
 const EmailException = require('../email/EmailException');
 const InvalidTokenException = require('./InvalidTokenException');
 const UserNotFoundException = require('./UserNotFoundException');
-
-const generateToken = (length = 10) => {
-  return crypto.randomBytes(length).toString('hex').substring(0, length);
-};
+const { randomString } = require('../shared/generator');
 
 const create = async (data) => {
   const { username, password, email } = data;
@@ -19,7 +17,7 @@ const create = async (data) => {
     username,
     email,
     password: hashedPwd,
-    activationToken: generateToken(16),
+    activationToken: randomString(16),
   };
   const transaction = await sequelize.transaction();
   await User.create(newUser, { transaction: transaction });
@@ -47,12 +45,18 @@ const findByEmail = (email) => {
   return User.findOne({ where: { email } });
 };
 
-const getUsers = async (page = 0, size = 10) => {
+const getUsers = async (page = 0, size = 10, authenticatedUser = null) => {
+  const userId = authenticatedUser ? authenticatedUser.id : 0;
   const pageSize = size;
   const usersWithCount = await User.findAndCountAll({
     limit: pageSize,
     offset: page * pageSize,
-    where: { inactive: false },
+    where: {
+      inactive: false,
+      id: {
+        [Sequelize.Op.not]: userId,
+      },
+    },
     attributes: ['id', 'username', 'email'],
   });
 
@@ -73,4 +77,18 @@ const getUser = async (id) => {
   return user;
 };
 
-module.exports = { create, activate, getUsers, getUser, findByEmail };
+const updateUser = async (id, updateBody) => {
+  const user = await User.findOne({ where: { id: id } });
+  user.username = updateBody.username;
+  user.save();
+  return user;
+};
+
+module.exports = {
+  create,
+  activate,
+  getUsers,
+  getUser,
+  findByEmail,
+  updateUser,
+};

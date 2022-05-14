@@ -3,6 +3,7 @@ const app = require('../src/app');
 const User = require('../src/user/User');
 const sequelize = require('../src/config/database');
 const bcrypt = require('bcrypt');
+const Token = require('../src/auth/Token');
 beforeAll(async () => {
   await sequelize.sync();
 });
@@ -27,6 +28,13 @@ const authenticateUser = (credentials, option = { translate: 'en' }) => {
     .set('accept-language', option.translate)
     .send(credentials);
 };
+const logoutUser = (option) => {
+  const agent = request(app).post('/api/1.0/logout');
+  if (option?.token) {
+    agent.set('Authorization', `Bearer ${option.token}`);
+  }
+  return agent;
+};
 describe('Authenticate user', () => {
   fit('returns 200 ok when credentials are correct', async () => {
     await addUser();
@@ -37,7 +45,7 @@ describe('Authenticate user', () => {
     expect(response.status).toBe(200);
   });
 
-  fit('return user id and username and email when user login success', async () => {
+  fit('return user id and username, email and token when user login success', async () => {
     const user = await addUser();
     const response = await authenticateUser({
       email: 'user1@gmail.com',
@@ -45,7 +53,7 @@ describe('Authenticate user', () => {
     });
     expect(response.body.id).toBe(user.id);
     expect(response.body.username).toBe(user.username);
-    expect(Object.keys(response.body)).toEqual(['id', 'username']);
+    expect(Object.keys(response.body)).toEqual(['id', 'username', 'token']);
   });
   fit('returns 401 when user does not exist', async () => {
     const response = await authenticateUser({
@@ -148,5 +156,31 @@ describe('Authenticate user', () => {
       email: 'user1@gmai.com',
     });
     expect(response.status).toBe(401);
+  });
+  fit('returns a token in response body when credential are correct', async () => {
+    await addUser();
+    const response = await authenticateUser({
+      email: 'user1@gmail.com',
+      password: 'Password4',
+    });
+    expect(response.body.token).not.toBeUndefined();
+  });
+});
+
+describe('Logout', () => {
+  fit('returns 200 ok when request send with valid token', async () => {
+    const response = await logoutUser().send();
+    expect(response.status).toBe(200);
+  });
+  fit('remove token record from database when request send with valid token', async () => {
+    await addUser();
+    let response = await authenticateUser({
+      email: 'user1@gmail.com',
+      password: 'Password4',
+    });
+    const { token } = response.body;
+    response = await logoutUser({ token }).send();
+    const tokenInDb = await Token.findOne({ where: { token } });
+    expect(tokenInDb).not.toBeTruthy();
   });
 });

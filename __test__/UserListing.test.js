@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../src/app');
 const User = require('../src/user/User');
+const bcrypt = require('bcrypt');
 const sequelize = require('../src/config/database');
 beforeAll(async () => {
   await sequelize.sync();
@@ -10,8 +11,21 @@ beforeEach(() => {
   simulateSmtpFailure = false;
   return User.destroy({ truncate: true });
 });
-const getUsers = () => {
-  return request(app).get('/api/1.0/users').send();
+const authorize = async (option) => {
+  let agent = request(app);
+  let token;
+  if (option.auth) {
+    const response = await agent.post('/api/1.0/auth').send({ ...option.auth });
+    token = response.body.token;
+  }
+  return token;
+};
+const getUsers = (option) => {
+  const agent = request(app).get('/api/1.0/users');
+  if (option?.token) {
+    agent.set('Authorization', `bearer ${option.token}`);
+  }
+  return agent;
 };
 const getUser = (id) => {
   return request(app)
@@ -19,11 +33,12 @@ const getUser = (id) => {
     .send();
 };
 const addUsers = async (activeUserCount = 10, inactiveUserCount = 0) => {
+  const hashPw = await bcrypt.hash('Password4', 10);
   for (let i = 0; i < activeUserCount + inactiveUserCount; i++) {
     await User.create({
       username: `user${i}`,
       email: `user${i}@gmail.com`,
-      password: 'Password4',
+      password: hashPw,
       inactive: inactiveUserCount > i,
     });
   }
@@ -73,10 +88,7 @@ describe('User Listing', () => {
   });
   it('returns second page users and indicators when page is set to 1 at request param', async () => {
     await addUsers(11);
-    const response = await request(app)
-      .get('/api/1.0/users')
-      .query({ page: 1 })
-      .send();
+    const response = await getUsers().query({ page: 1 }).send();
     expect(response.body.content[0].username).toBe('user10');
     expect(response.body.page).toBe(1);
   });
@@ -93,10 +105,7 @@ describe('User Listing', () => {
 
   it('returns 5 users and corresponding values when size is set to 5 in request parameter', async () => {
     await addUsers(11);
-    const response = await request(app)
-      .get('/api/1.0/users')
-      .query({ size: 5 })
-      .send();
+    const response = await getUsers().query({ size: 5 }).send();
     expect(response.body.content.length).toBe(5);
     expect(response.body.size).toBe(5);
   });
@@ -122,12 +131,22 @@ describe('User Listing', () => {
 
   it('return page as zero and size as 10 when non-numeric values are set to both size and page', async () => {
     await addUsers(11);
-    const response = await request(app)
-      .get('/api/1.0/users')
+    const token = await authorize({
+      auth: { email: 'user1@gmail.com', password: 'Password4' },
+    });
+    const response = await getUsers({ token })
       .query({ size: 'qqq', page: 'size' })
       .send();
     expect(response.body.page).toBe(0);
     expect(response.body.size).toBe(10);
+  });
+  it('return page without logged in user when request has valid authentication', async () => {
+    await addUsers(11);
+    const token = await authorize({
+      auth: { email: 'user1@gmail.com', password: 'Password4' },
+    });
+    const response = await getUsers({ token }).send();
+    expect(response.body.totalPages).toBe(1);
   });
 });
 
